@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from itertools import cycle
 import matplotlib.pyplot as plt
 
 def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device, history):
@@ -71,24 +72,6 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
 def fit_with_pseudo_label(
     net, optimizer, criterion, num_epochs, train_loader, unlabeled_loader, test_loader, device, history, alpha_init=0.1
 ):
-    """
-    擬似ラベルを使用したモデルの訓練を行う関数 (α の更新を含む)
-
-    Args:
-        net: PyTorchモデル
-        optimizer: モデルの重みを更新するための最適化アルゴリズム
-        criterion: 損失関数
-        num_epochs: 訓練を行うエポック数
-        train_loader: ラベル付きデータのデータローダー
-        unlabeled_loader: ラベルなしデータのデータローダー
-        test_loader: 検証データのデータローダー
-        device: 使用するデバイス ('cpu' または 'cuda')
-        history: 訓練履歴
-        alpha_init: 擬似ラベル損失の初期重み係数
-
-    Returns:
-        訓練履歴を含む配列
-    """
     base_epochs = len(history)
     alpha = alpha_init  # 初期値
 
@@ -99,13 +82,21 @@ def fit_with_pseudo_label(
         val_acc = 0.0
 
         # α を更新
-        alpha = update_alpha(epoch, max_alpha=3.0, T1=50, T2=200)
+        alpha = update_alpha(epoch, max_alpha=3.0, T1=num_epochs//20, T2=num_epochs//2)
 
         # 訓練フェーズ
         net.train()
-        for (inputs, labels), (unlabeled_inputs,) in zip(train_loader, unlabeled_loader):
+        for train_batch, unlabeled_batch in zip(train_loader, cycle(unlabeled_loader)):
+            # ラベル付きデータ
+            inputs, labels = train_batch
             inputs, labels = inputs.to(device), labels.to(device)
-            unlabeled_inputs = unlabeled_inputs.to(device)
+
+            # ラベルなしデータ
+            unlabeled_inputs = unlabeled_batch
+            if isinstance(unlabeled_inputs, list):
+                unlabeled_inputs = unlabeled_inputs[0].to(device)
+            else:
+                unlabeled_inputs = unlabeled_inputs.to(device)
 
             # 擬似ラベル生成
             with torch.no_grad():
@@ -118,7 +109,6 @@ def fit_with_pseudo_label(
             loss_labeled = criterion(outputs, labels)
 
             # ラベルなしデータの損失（擬似ラベル）
-            outputs_unlabeled = net(unlabeled_inputs)
             loss_unlabeled = criterion(outputs_unlabeled, pseudo_labels)
 
             # 損失の重み付け
@@ -143,7 +133,7 @@ def fit_with_pseudo_label(
                 val_acc += (preds == labels).sum().item()
 
         # 平均損失と精度の計算
-        avg_train_loss = train_loss / (len(train_loader.dataset) + len(unlabeled_loader.dataset))
+        avg_train_loss = train_loss / len(train_loader.dataset)
         avg_train_acc = train_acc / len(train_loader.dataset)
         avg_val_loss = val_loss / len(test_loader.dataset)
         avg_val_acc = val_acc / len(test_loader.dataset)
