@@ -69,11 +69,11 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
 
     return history
 
-def fit_with_pseudo_label(
-    net, optimizer, criterion, num_epochs, train_loader, unlabeled_loader, test_loader, device, history, alpha_init=0.1
+def fit_self_train(
+    net, optimizer, criterion, num_epochs, train_loader, unlabeled_loader, test_loader, device, history, alpha_init=None
 ):
     base_epochs = len(history)
-    alpha = alpha_init  # 初期値
+    alpha = alpha_init 
 
     for epoch in range(base_epochs, num_epochs + base_epochs):
         train_loss = 0.0
@@ -81,8 +81,11 @@ def fit_with_pseudo_label(
         val_loss = 0.0
         val_acc = 0.0
 
-        # α を更新
-        alpha = update_alpha(epoch, max_alpha=3.0, T1=num_epochs//20, T2=num_epochs//2)
+        # α を更新　（α=Noneの場合はラベルなしをずっと同じ比重で扱う）
+        if alpha_init != None: 
+            alpha = update_alpha(epoch, max_alpha=3.0, T1=num_epochs//20, T2=num_epochs//2)
+        else:
+            alpha = 1
 
         # 訓練フェーズ
         net.train()
