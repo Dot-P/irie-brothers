@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from itertools import cycle
 import matplotlib.pyplot as plt
+import math
 
 def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device, history):
     """
@@ -171,6 +172,17 @@ def update_alpha(epoch, max_alpha=3.0, T1=50, T2=200):
         return max_alpha * (epoch - T1) / (T2 - T1)
     else:
         return max_alpha
+    
+def cal_consistency_weight(epoch, init_ep=0, end_ep=150, init_w=0.0, end_w=1.0):
+    """Sets the weights for the consistency loss"""
+    if epoch > end_ep:
+        weight_cl = end_w
+    elif epoch < init_ep:
+        weight_cl = init_w
+    else:
+        T = float(epoch - init_ep) / float(end_ep - init_ep)
+        weight_cl = (math.exp(-5.0 * (1.0 - T) * (1.0 - T))) * (end_w - init_w) + init_w
+    return weight_cl
 
 
 def generate_pseudo_labels(net, unlabeled_loader, device):
