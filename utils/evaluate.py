@@ -32,6 +32,34 @@ def get_predictions(net, data_loader, device):
 
     return np.concatenate(y_pred), np.concatenate(y_prob)
 
+
+def select_predictions(y_pred1, y_prob1, y_pred2, y_prob2):
+    """
+    2つの予測結果と信頼度を比較し、最大信頼度が高い方を選択する。
+    確率が同じ場合は、先に与えられたものを優先する。
+
+    Args:
+        y_pred1 (np.ndarray): 最初の予測結果 (1次元: クラスラベル)
+        y_prob1 (np.ndarray): 最初のクラスごとの信頼度 (2次元: サンプル数×クラス数)
+        y_pred2 (np.ndarray): 2番目の予測結果 (1次元: クラスラベル)
+        y_prob2 (np.ndarray): 2番目のクラスごとの信頼度 (2次元: サンプル数×クラス数)
+
+    Returns:
+        tuple: (選択された予測結果ベクトル, 選択された信頼度ベクトル)
+    """
+    # 各サンプルごとの最大信頼度を計算
+    max_prob1 = np.max(y_prob1, axis=1)  # y_prob1の最大信頼度
+    max_prob2 = np.max(y_prob2, axis=1)  # y_prob2の最大信頼度
+
+    # 最大信頼度を比較して、大きい方を選択
+    mask = max_prob2 > max_prob1  # Trueならy_prob2を選ぶ
+
+    # y_predとy_probをmaskに基づいて選択
+    y_pred = np.where(mask, y_pred2, y_pred1)
+    y_prob = np.where(mask[:, None], y_prob2, y_prob1)  # クラスごとの信頼度を選択
+    return y_pred, y_prob
+
+
 def evaluate_model(y_val, y_pred):
     """
     検証データの正解ラベルと予測ラベルを用いて混同行列を可視化する関数

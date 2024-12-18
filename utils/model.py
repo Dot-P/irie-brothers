@@ -42,7 +42,7 @@ def get_model(model_name: str, num_classes: int):
         model.fc = nn.Linear(in_features=model.fc.in_features, out_features=num_classes)
         print(model)
     elif model_name == 'swin': # 優
-        model = models.swin_t(pretrained=True)
+        model = models.swin_t(weights=models.Swin_T_Weights.IMAGENET1K_V1)
         model.head = nn.Linear(in_features=model.head.in_features, out_features=num_classes)
         print(model)
     elif model_name == 'swin_v2':

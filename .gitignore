@@ -2,3 +2,5 @@
 model.pth
 best.pth
 god.pth
+mixmatch.pth
+pi_model.pth
